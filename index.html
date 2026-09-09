@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+<title>Goa Trip 2026 — Scrapbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&family=Caveat:wght@500;700&family=Special+Elite&family=Playfair+Display:ital@1&family=Baloo+2:wght@600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ============ CONFIG-DRIVEN DESIGN TOKENS ============ */
+:root{
+  --ink:#1E2A26;
+  --teal-deep:#0F332E;
+  --teal-mid:#1F5C52;
+  --sand:#F1E6CE;
+  --paper:#FFFDF7;
+  --coral:#E15B3F;
+  --gold:#E2A63D;
+  --seafoam:#A9C9B8;
+  --line:rgba(30,42,38,0.14);
+  --shadow:0 10px 24px rgba(15,51,46,0.16);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:'Inter',sans-serif;
+  background:var(--sand);
+  color:var(--ink);
+  padding-bottom:78px;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{font-family:'Fraunces',serif;font-weight:600;margin:0;}
+button{font-family:'Inter',sans-serif;cursor:pointer;}
+input,textarea,select{font-family:'Inter',sans-serif;}
+a{color:inherit;}
+
+/* ============ CONFIG BANNER ============ */
+#config-banner{
+  display:none;
+  background:var(--coral);
+  color:#fff;
+  padding:10px 16px;
+  font-size:13px;
+  text-align:center;
+  position:sticky;top:0;z-index:50;
+}
+#config-banner code{background:rgba(255,255,255,0.2);padding:2px 5px;border-radius:3px;}
+
+/* ============ HERO ============ */
+.hero{
+  position:relative;
+  background:radial-gradient(120% 90% at 20% 0%, #17554B 0%, var(--teal-deep) 55%, #0A211D 100%);
+  color:var(--sand);
+  padding:56px 24px 90px;
+  overflow:hidden;
+  text-align:center;
+}
+.hero::before{
+  content:"";
+  position:absolute; inset:0;
+  background-image:
+    radial-gradient(2px 2px at 20% 30%, rgba(241,230,206,0.35), transparent),
+    radial-gradient(2px 2px at 70% 60%, rgba(241,230,206,0.25), transparent),
+    radial-gradient(1.5px 1.5px at 45% 80%, rgba(241,230,206,0.3), transparent),
+    radial-gradient(1.5px 1.5px at 85% 20%, rgba(241,230,206,0.25), transparent);
+  pointer-events:none;
+}
+.hero-tag{
+  display:inline-block;
+  font-family:'Caveat',cursive;
+  font-size:22px;
+  color:var(--gold);
+  transform:rotate(-3deg);
+  margin-bottom:6px;
+}
+.hero h1{
+  font-size:clamp(40px,11vw,64px);
+  line-height:1.02;
+  letter-spacing:-0.01em;
+}
+.hero h1 em{
+  font-style:italic;
+  color:var(--gold);
+}
+.hero p.sub{
+  font-size:16px;
+  color:var(--seafoam);
+  max-width:340px;
+  margin:14px auto 0;
+  line-height:1.5;
+}
+.countdown{
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  margin:34px auto 0;
+  max-width:360px;
+}
+.countdown .cell{
+  background:rgba(241,230,206,0.08);
+  border:1px solid rgba(241,230,206,0.25);
+  border-radius:10px;
+  padding:12px 6px;
+  flex:1;
+}
+.countdown .num{
+  font-family:'Fraunces',serif;
+  font-size:26px;
+  display:block;
+}
+.countdown .lbl{
+  font-size:11px;
+  color:var(--seafoam);
+  margin-top:2px;
+  display:block;
+}
+.wave{
+  position:absolute; bottom:-1px; left:0; width:100%; height:60px;
+  fill:var(--sand);
+}
+
+/* ============ TABS CONTENT ============ */
+.view{display:none; padding:22px 16px 20px; max-width:640px; margin:0 auto;}
+.view.active{display:block;}
+
+.section-title{
+  font-size:26px;
+  margin-bottom:4px;
+}
+.section-hint{
+  font-family:'Caveat',cursive;
+  font-size:18px;
+  color:var(--teal-mid);
+  margin-bottom:18px;
+  display:block;
+}
+
+/* ============ NOTES ============ */
+.chip-row{display:flex; gap:8px; overflow-x:auto; padding-bottom:10px; margin-bottom:16px; -webkit-overflow-scrolling:touch;}
+.chip-row::-webkit-scrollbar{display:none;}
+.chip{
+  flex:0 0 auto;
+  background:var(--paper);
+  border:1px solid var(--line);
+  padding:8px 14px;
+  border-radius:20px;
+  font-size:13px;
+  font-weight:500;
+  white-space:nowrap;
+}
+.chip.active{background:var(--teal-mid); color:#fff; border-color:var(--teal-mid);}
+
+.note-card{
+  background:var(--paper);
+  border:1px solid var(--line);
+  border-left:4px solid var(--coral);
+  border-radius:3px;
+  padding:14px 16px;
+  margin-bottom:10px;
+  box-shadow:var(--shadow);
+}
+.note-card:nth-child(3n+2){border-left-color:var(--gold);}
+.note-card:nth-child(3n){border-left-color:var(--teal-mid);}
+.note-card .cat{
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:0.04em;
+  color:var(--teal-mid);
+  font-weight:600;
+  margin-bottom:4px;
+}
+.note-card .txt{font-size:15px; line-height:1.5;}
+.note-card .meta{font-size:12px; color:#8a8478; margin-top:8px; font-family:'Caveat',cursive; font-size:15px;}
+
+.add-form{
+  background:var(--paper);
+  border:1px dashed var(--line);
+  border-radius:10px;
+  padding:16px;
+  margin-top:18px;
+}
+.add-form input, .add-form textarea, .add-form select{
+  width:100%;
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:10px 12px;
+  font-size:14px;
+  margin-bottom:10px;
+  background:#fff;
+}
+.add-form textarea{resize:vertical; min-height:60px;}
+.btn{
+  background:var(--coral);
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  padding:11px 18px;
+  font-size:14px;
+  font-weight:600;
+}
+.btn.secondary{background:var(--teal-mid);}
+.btn.block{width:100%;}
+
+/* ============ PACKING ============ */
+.progress-wrap{
+  background:var(--paper);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:14px 16px;
+  margin-bottom:20px;
+}
+.progress-label{font-size:13px; margin-bottom:8px; display:flex; justify-content:space-between;}
+.progress-bar{height:10px; background:var(--sand); border-radius:6px; overflow:hidden; border:1px solid var(--line);}
+.progress-fill{height:100%; background:linear-gradient(90deg, var(--gold), var(--coral)); transition:width 0.35s ease;}
+
+.pack-group{margin-bottom:22px;}
+.pack-group h3{font-size:15px; color:var(--teal-mid); margin-bottom:8px; font-family:'Inter',sans-serif; font-weight:700;}
+.pack-item{
+  display:flex; align-items:center; gap:10px;
+  background:var(--paper);
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:10px 12px;
+  margin-bottom:7px;
+}
+.pack-item.checked{opacity:0.55;}
+.pack-item.checked .item-text{text-decoration:line-through;}
+.pack-item input[type=checkbox]{
+  width:19px; height:19px; accent-color:var(--coral); flex:0 0 auto;
+}
+.item-text{font-size:14.5px; flex:1;}
+.item-tag{font-size:11px; color:#8a8478;}
+
+/* ============ PINBOARD ============ */
+.corkboard{
+  background:
+    radial-gradient(circle at 15% 20%, rgba(0,0,0,0.06) 0, transparent 3%),
+    radial-gradient(circle at 80% 60%, rgba(0,0,0,0.05) 0, transparent 3%),
+    linear-gradient(#B9895E,#A8794F);
+  border-radius:14px;
+  padding:18px 12px 26px;
+  margin:-6px -4px 0;
+}
+.pin-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px 10px;}
+.polaroid{
+  background:#fff;
+  padding:8px 8px 34px;
+  box-shadow:0 8px 16px rgba(0,0,0,0.25);
+  position:relative;
+  font-size:0;
+}
+.polaroid img{width:100%; display:block; aspect-ratio:1/1; object-fit:cover; background:var(--sand);}
+.polaroid .cap{
+  font-size:14px;
+  padding:8px 4px 0;
+  text-align:center;
+  color:#2a231a;
+  line-height:1.25;
+}
+.polaroid .loc{
+  display:block; font-size:11px; color:#8a8478; font-family:'Inter',sans-serif; margin-top:2px;
+}
+.polaroid .pin-emoji{
+  position:absolute; top:-10px; left:50%; transform:translateX(-50%); font-size:22px;
+  filter:drop-shadow(0 3px 3px rgba(0,0,0,0.3));
+}
+.font-handwritten{font-family:'Caveat',cursive; font-size:19px;}
+.font-typewriter{font-family:'Special Elite',monospace; font-size:12px;}
+.font-elegant{font-family:'Playfair Display',serif; font-style:italic; font-size:14px;}
+.font-playful{font-family:'Baloo 2',cursive; font-size:13px;}
+
+.upload-fab{
+  position:fixed; right:18px; bottom:88px;
+  width:54px; height:54px; border-radius:50%;
+  background:var(--coral); color:#fff; border:none;
+  font-size:26px; box-shadow:0 10px 20px rgba(225,91,63,0.4);
+  z-index:40;
+}
+
+.pin-modal{
+  position:fixed; inset:0; background:rgba(15,51,46,0.55);
+  display:none; align-items:flex-end; z-index:60;
+}
+.pin-modal.open{display:flex;}
+.pin-modal-body{
+  background:var(--paper); width:100%; border-radius:18px 18px 0 0;
+  padding:20px 18px 26px; max-height:85vh; overflow-y:auto;
+}
+.pin-modal-body h3{margin-bottom:14px;}
+.font-choice-row{display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;}
+.font-choice{border:1px solid var(--line); border-radius:8px; padding:8px 12px; background:#fff; font-size:14px;}
+.font-choice.active{border-color:var(--coral); background:#FCEAE5;}
+.sticker-row{display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
+.sticker-choice{font-size:22px; padding:6px 9px; border:1px solid var(--line); border-radius:8px; background:#fff;}
+.sticker-choice.active{border-color:var(--coral); background:#FCEAE5;}
+
+/* ============ TAB BAR ============ */
+.tabbar{
+  position:fixed; bottom:0; left:0; width:100%;
+  background:var(--paper);
+  border-top:1px solid var(--line);
+  display:flex;
+  z-index:45;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.tab-btn{
+  flex:1; background:none; border:none; padding:11px 4px 9px;
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  color:#8a8478; font-size:11px; font-weight:600;
+}
+.tab-btn .ic{font-size:19px;}
+.tab-btn.active{color:var(--coral);}
+.tab-btn.active .ic{transform:translateY(-1px);}
+
+.empty-state{
+  text-align:center; padding:40px 20px; color:#8a8478;
+}
+.empty-state .em{font-size:34px; display:block; margin-bottom:10px;}
+.empty-state .txt{font-family:'Caveat',cursive; font-size:20px; color:var(--teal-mid);}
+
+@media(min-width:520px){
+  .pin-grid{grid-template-columns:1fr 1fr 1fr;}
+}
+</style>
+</head>
+<body>
+
+<div id="config-banner">Connect Supabase to start saving: edit <code>CONFIG</code> near the top of index.html with your project URL and anon key.</div>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <span class="hero-tag">a little scrapbook for —</span>
+  <h1>Goa Trip<br><em>2026</em></h1>
+  <p class="sub">Every note, every packed bag, every photo we take — kept in one place, just for us.</p>
+  <div class="countdown" id="countdown">
+    <div class="cell"><span class="num" id="cd-days">–</span><span class="lbl">days</span></div>
+    <div class="cell"><span class="num" id="cd-hours">–</span><span class="lbl">hours</span></div>
+    <div class="cell"><span class="num" id="cd-mins">–</span><span class="lbl">mins</span></div>
+  </div>
+  <svg class="wave" viewBox="0 0 500 60" preserveAspectRatio="none"><path d="M0,30 C150,70 350,-10 500,30 L500,60 L0,60 Z"></path></svg>
+</section>
+
+<!-- ============ NOTES VIEW ============ -->
+<section class="view" id="view-notes">
+  <h2 class="section-title">Notes</h2>
+  <span class="section-hint">cafes, songs, sights — things worth remembering before we go</span>
+
+  <div class="chip-row" id="note-chips"></div>
+  <div id="notes-list"></div>
+
+  <form class="add-form" id="note-form">
+    <select id="note-category">
+      <option>Cafes to explore</option>
+      <option>Music to hear</option>
+      <option>Photo spots to click</option>
+      <option>Local dishes to try</option>
+      <option>Day trip ideas</option>
+      <option>Other</option>
+    </select>
+    <textarea id="note-content" placeholder="Add a note…" required></textarea>
+    <input id="note-author" placeholder="Your name (optional)" />
+    <button class="btn block" type="submit">Add note</button>
+  </form>
+</section>
+
+<!-- ============ PACKING VIEW ============ -->
+<section class="view" id="view-packing">
+  <h2 class="section-title">Packing checklist</h2>
+  <span class="section-hint">tick it off once it's actually in the bag</span>
+
+  <div class="progress-wrap">
+    <div class="progress-label"><span id="progress-text">0 of 0 packed</span><span id="progress-pct">0%</span></div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  </div>
+
+  <div id="packing-groups"></div>
+
+  <form class="add-form" id="pack-form">
+    <input id="pack-item" placeholder="Add an item…" required />
+    <input id="pack-category" placeholder="Category (e.g. Beach, Electronics)" />
+    <button class="btn block secondary" type="submit">Add to list</button>
+  </form>
+</section>
+
+<!-- ============ PINBOARD VIEW ============ -->
+<section class="view" id="view-pinboard">
+  <h2 class="section-title">Pinboard</h2>
+  <span class="section-hint">our scrapbook wall — tap + to pin a memory</span>
+
+  <div class="corkboard">
+    <div class="pin-grid" id="pin-grid"></div>
+  </div>
+  <button class="upload-fab" id="open-pin-modal">+</button>
+</section>
+
+<!-- ============ PIN MODAL ============ -->
+<div class="pin-modal" id="pin-modal">
+  <div class="pin-modal-body">
+    <h3>Pin a memory</h3>
+    <form id="pin-form">
+      <input type="file" id="pin-file" accept="image/*" required style="margin-bottom:10px;" />
+      <textarea id="pin-caption" placeholder="Write the memory…" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;margin-bottom:10px;min-height:60px;"></textarea>
+      <input id="pin-location" placeholder="Location (e.g. Anjuna Beach)" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;margin-bottom:10px;" />
+
+      <div class="font-choice-row">
+        <button type="button" class="font-choice font-handwritten active" data-font="handwritten">Handwritten</button>
+        <button type="button" class="font-choice font-typewriter" data-font="typewriter">Typewriter</button>
+        <button type="button" class="font-choice font-elegant" data-font="elegant">Elegant</button>
+        <button type="button" class="font-choice font-playful" data-font="playful">Playful</button>
+      </div>
+
+      <div class="sticker-row" id="sticker-row"></div>
+
+      <button class="btn block" type="submit" id="pin-submit-btn">Pin it</button>
+      <button class="btn block" type="button" id="pin-cancel-btn" style="background:transparent;color:var(--ink);margin-top:8px;">Cancel</button>
+    </form>
+  </div>
+</div>
+
+<!-- ============ TAB BAR ============ -->
+<nav class="tabbar">
+  <button class="tab-btn active" data-tab="home"><span class="ic">🏖️</span>Home</button>
+  <button class="tab-btn" data-tab="notes"><span class="ic">📝</span>Notes</button>
+  <button class="tab-btn" data-tab="packing"><span class="ic">🎒</span>Packing</button>
+  <button class="tab-btn" data-tab="pinboard"><span class="ic">📌</span>Pinboard</button>
+</nav>
+
+<script>
+/* ================================================================
+   CONFIG — fill these in from your Supabase project
+   Supabase dashboard → Settings → API
+   ================================================================ */
+const CONFIG = {
+  SUPABASE_URL: "YOUR_SUPABASE_URL",        // e.g. https://xxxxx.supabase.co
+  SUPABASE_ANON_KEY: "YOUR_SUPABASE_ANON_KEY",
+  TRIP_NAME: "Goa Trip 2026",
+  TRIP_DATE: "2026-12-20T00:00:00"          // edit to your actual travel date
+};
+
+const isConfigured = CONFIG.SUPABASE_URL.startsWith("http");
+if(!isConfigured){ document.getElementById('config-banner').style.display='block'; }
+const sb = isConfigured ? supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY) : null;
+
+/* ---------------- TAB NAVIGATION ---------------- */
+const tabs = document.querySelectorAll('.tab-btn');
+const views = { home: document.querySelector('.hero'), notes: document.getElementById('view-notes'),
+  packing: document.getElementById('view-packing'), pinboard: document.getElementById('view-pinboard') };
+function showTab(name){
+  tabs.forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
+  Object.entries(views).forEach(([k,el])=>{
+    if(k==='home'){ el.style.display = k===name ? 'block' : 'none'; }
+    else{ el.classList.toggle('active', k===name); }
+  });
+  window.scrollTo({top:0,behavior:'instant'});
+}
+tabs.forEach(t=>t.addEventListener('click', ()=>showTab(t.dataset.tab)));
+
+/* ---------------- COUNTDOWN ---------------- */
+function tickCountdown(){
+  const target = new Date(CONFIG.TRIP_DATE).getTime();
+  const now = Date.now();
+  const diff = Math.max(0, target - now);
+  const days = Math.floor(diff/86400000);
+  const hours = Math.floor((diff%86400000)/3600000);
+  const mins = Math.floor((diff%3600000)/60000);
+  document.getElementById('cd-days').textContent = days;
+  document.getElementById('cd-hours').textContent = hours;
+  document.getElementById('cd-mins').textContent = mins;
+}
+tickCountdown(); setInterval(tickCountdown, 30000);
+
+/* ---------------- NOTES ---------------- */
+const noteCategories = ["All","Cafes to explore","Music to hear","Photo spots to click","Local dishes to try","Day trip ideas","Other"];
+let activeCategory = "All";
+let allNotes = [];
+
+function renderChips(){
+  const row = document.getElementById('note-chips');
+  row.innerHTML = noteCategories.map(c=>
+    `<button class="chip ${c===activeCategory?'active':''}" data-cat="${c}">${c}</button>`
+  ).join('');
+  row.querySelectorAll('.chip').forEach(ch=>{
+    ch.addEventListener('click', ()=>{ activeCategory = ch.dataset.cat; renderChips(); renderNotes(); });
+  });
+}
+function renderNotes(){
+  const list = document.getElementById('notes-list');
+  const filtered = activeCategory==="All" ? allNotes : allNotes.filter(n=>n.category===activeCategory);
+  if(filtered.length===0){
+    list.innerHTML = `<div class="empty-state"><span class="em">🗒️</span><span class="txt">nothing here yet — add the first one below</span></div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(n=>`
+    <div class="note-card">
+      <div class="cat">${n.category}</div>
+      <div class="txt">${escapeHtml(n.content)}</div>
+      <div class="meta">${n.author ? '— '+escapeHtml(n.author) : ''}</div>
+    </div>
+  `).join('');
+}
+async function fetchNotes(){
+  if(!sb) return;
+  const { data, error } = await sb.from('notes').select('*').order('created_at', {ascending:false});
+  if(!error){ allNotes = data; renderNotes(); }
+}
+document.getElementById('note-form').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  if(!sb) return alert('Connect Supabase first (see banner at top).');
+  const category = document.getElementById('note-category').value;
+  const content = document.getElementById('note-content').value.trim();
+  const author = document.getElementById('note-author').value.trim();
+  if(!content) return;
+  await sb.from('notes').insert({category, content, author});
+  document.getElementById('note-content').value='';
+  fetchNotes();
+});
+
+/* ---------------- PACKING CHECKLIST ---------------- */
+let allItems = [];
+function renderPacking(){
+  const wrap = document.getElementById('packing-groups');
+  const groups = {};
+  allItems.forEach(it=>{ (groups[it.category||'General'] ??= []).push(it); });
+  if(allItems.length===0){
+    wrap.innerHTML = `<div class="empty-state"><span class="em">🎒</span><span class="txt">list's empty — add your first item below</span></div>`;
+  } else {
+    wrap.innerHTML = Object.entries(groups).map(([cat, items])=>`
+      <div class="pack-group">
+        <h3>${escapeHtml(cat)}</h3>
+        ${items.map(it=>`
+          <label class="pack-item ${it.is_checked?'checked':''}">
+            <input type="checkbox" data-id="${it.id}" ${it.is_checked?'checked':''}/>
+            <span class="item-text">${escapeHtml(it.item)}</span>
+          </label>
+        `).join('')}
+      </div>
+    `).join('');
+    wrap.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+      cb.addEventListener('change', async ()=>{
+        await sb.from('checklist_items').update({is_checked:cb.checked}).eq('id', cb.dataset.id);
+        fetchChecklist();
+      });
+    });
+  }
+  const total = allItems.length;
+  const done = allItems.filter(i=>i.is_checked).length;
+  const pct = total ? Math.round(done/total*100) : 0;
+  document.getElementById('progress-text').textContent = `${done} of ${total} packed`;
+  document.getElementById('progress-pct').textContent = `${pct}%`;
+  document.getElementById('progress-fill').style.width = pct+'%';
+}
+async function fetchChecklist(){
+  if(!sb) return;
+  const { data, error } = await sb.from('checklist_items').select('*').order('category').order('created_at');
+  if(!error){ allItems = data; renderPacking(); }
+}
+document.getElementById('pack-form').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  if(!sb) return alert('Connect Supabase first (see banner at top).');
+  const item = document.getElementById('pack-item').value.trim();
+  const category = document.getElementById('pack-category').value.trim() || 'General';
+  if(!item) return;
+  await sb.from('checklist_items').insert({item, category});
+  document.getElementById('pack-item').value=''; document.getElementById('pack-category').value='';
+  fetchChecklist();
+});
+
+/* ---------------- PINBOARD ---------------- */
+const stickerOptions = ["☀️","🌴","🐚","📸","🍹","✈️","🎵","📍","❤️","🌊"];
+let chosenFont = 'handwritten';
+let chosenSticker = stickerOptions[0];
+let allPins = [];
+
+document.getElementById('sticker-row').innerHTML = stickerOptions.map((s,i)=>
+  `<button type="button" class="sticker-choice ${i===0?'active':''}" data-s="${s}">${s}</button>`
+).join('');
+document.querySelectorAll('.font-choice').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.font-choice').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active'); chosenFont = btn.dataset.font;
+  });
+});
+document.querySelectorAll('.sticker-choice').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.sticker-choice').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active'); chosenSticker = btn.dataset.s;
+  });
+});
+
+function renderPins(){
+  const grid = document.getElementById('pin-grid');
+  if(allPins.length===0){
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><span class="em">📌</span><span class="txt" style="color:#fff;">no memories pinned yet</span></div>`;
+    return;
+  }
+  grid.innerHTML = allPins.map(p=>`
+    <div class="polaroid" style="transform:rotate(${p.rotation||0}deg)">
+      <span class="pin-emoji">${p.sticker||''}</span>
+      <img src="${p.image_url}" alt="" loading="lazy"/>
+      <div class="cap font-${p.font_theme||'handwritten'}">${escapeHtml(p.caption||'')}</div>
+      ${p.location_name ? `<span class="loc">📍 ${escapeHtml(p.location_name)}</span>` : ''}
+    </div>
+  `).join('');
+}
+async function fetchPins(){
+  if(!sb) return;
+  const { data, error } = await sb.from('pins').select('*').order('created_at', {ascending:false});
+  if(!error){ allPins = data; renderPins(); }
+}
+
+const pinModal = document.getElementById('pin-modal');
+document.getElementById('open-pin-modal').addEventListener('click', ()=>{
+  if(!sb) return alert('Connect Supabase first (see banner at top).');
+  pinModal.classList.add('open');
+});
+document.getElementById('pin-cancel-btn').addEventListener('click', ()=> pinModal.classList.remove('open'));
+
+document.getElementById('pin-form').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const fileInput = document.getElementById('pin-file');
+  const file = fileInput.files[0];
+  if(!file) return;
+  const btn = document.getElementById('pin-submit-btn');
+  btn.disabled = true; btn.textContent = 'Pinning…';
+  try{
+    const path = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g,'_')}`;
+    const { error: upErr } = await sb.storage.from('pins').upload(path, file);
+    if(upErr) throw upErr;
+    const { data: urlData } = sb.storage.from('pins').getPublicUrl(path);
+    const rotation = Math.floor(Math.random()*12)-6;
+    await sb.from('pins').insert({
+      image_url: urlData.publicUrl,
+      caption: document.getElementById('pin-caption').value.trim(),
+      location_name: document.getElementById('pin-location').value.trim(),
+      font_theme: chosenFont,
+      sticker: chosenSticker,
+      rotation
+    });
+    e.target.reset();
+    pinModal.classList.remove('open');
+    fetchPins();
+  }catch(err){
+    alert('Upload failed: ' + (err.message || err));
+  }finally{
+    btn.disabled = false; btn.textContent = 'Pin it';
+  }
+});
+
+/* ---------------- REALTIME (so you both see updates live) ---------------- */
+function setupRealtime(){
+  if(!sb) return;
+  sb.channel('notes-changes').on('postgres_changes', {event:'*', schema:'public', table:'notes'}, fetchNotes).subscribe();
+  sb.channel('checklist-changes').on('postgres_changes', {event:'*', schema:'public', table:'checklist_items'}, fetchChecklist).subscribe();
+  sb.channel('pins-changes').on('postgres_changes', {event:'*', schema:'public', table:'pins'}, fetchPins).subscribe();
+}
+
+/* ---------------- UTIL ---------------- */
+function escapeHtml(str=''){
+  return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+/* ---------------- INIT ---------------- */
+showTab('home');
+renderChips();
+fetchNotes();
+fetchChecklist();
+fetchPins();
+setupRealtime();
+</script>
+</body>
+</html>
