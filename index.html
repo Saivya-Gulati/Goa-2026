@@ -90,6 +90,29 @@ a{color:inherit;}
   margin:14px auto 0;
   line-height:1.5;
 }
+.hero-photo-wrap{
+  position:relative;
+  display:inline-block;
+  margin:28px auto 0;
+  transform:rotate(-2.5deg);
+}
+.hero-photo{
+  display:block;
+  width:180px;
+  aspect-ratio:3/4;
+  object-fit:cover;
+  border:8px solid var(--paper);
+  border-bottom-width:26px;
+  border-radius:2px;
+  box-shadow:0 16px 30px rgba(0,0,0,0.35);
+}
+.hero-tape{
+  position:absolute; top:-14px; left:50%; transform:translateX(-50%) rotate(-4deg);
+  width:70px; height:26px;
+  background:rgba(226,166,61,0.55);
+  border:1px solid rgba(255,255,255,0.4);
+  z-index:2;
+}
 .countdown{
   display:flex;
   justify-content:center;
@@ -241,9 +264,25 @@ a{color:inherit;}
 .note-card.done{opacity:0.55;}
 .note-card.done .txt{text-decoration:line-through;}
 .note-card .done-badge{
-  position:absolute; top:8px; right:10px; font-size:16px; display:none;
+  position:absolute; top:8px; right:34px; font-size:16px; display:none;
 }
 .note-card.done .done-badge{display:inline;}
+.note-controls{
+  position:absolute; top:6px; right:6px; display:flex; gap:4px;
+}
+.note-controls button{
+  width:22px; height:22px; border-radius:50%; border:none;
+  background:rgba(30,42,38,0.08); font-size:11px; line-height:1;
+}
+.note-controls button:active{background:rgba(30,42,38,0.18);}
+.note-card .txt{padding-right:52px;}
+.note-edit-form select, .note-edit-form textarea{
+  width:100%; border:1px solid var(--line); border-radius:8px; padding:8px 10px;
+  font-size:14px; margin-bottom:8px; background:#fff;
+}
+.note-edit-form textarea{min-height:60px;}
+.note-edit-actions{display:flex; gap:8px;}
+.note-edit-actions .btn{padding:8px 14px; font-size:13px;}
 
 /* ============ PINBOARD ============ */
 .corkboard{
@@ -370,6 +409,10 @@ a{color:inherit;}
   <span class="hero-tag">a little scrapbook for —</span>
   <h1>Goa Trip<br><em>2026</em></h1>
   <p class="sub">Every note, every packed bag, every photo we take — kept in one place, just for us.</p>
+  <div class="hero-photo-wrap">
+    <div class="hero-tape"></div>
+    <img class="hero-photo" src="ChatGPT%20Image%20Sep%2012%2C%202026%2C%2003_22_50%20AM.png" alt="Us, getting ready for Goa" />
+  </div>
   <div class="countdown" id="countdown">
     <div class="cell"><span class="num" id="cd-days">–</span><span class="lbl">days</span></div>
     <div class="cell"><span class="num" id="cd-hours">–</span><span class="lbl">hours</span></div>
@@ -392,6 +435,7 @@ a{color:inherit;}
       <option>Photo spots to click</option>
       <option>Local dishes to try</option>
       <option>Day trip ideas</option>
+      <option>To shop</option>
       <option>Other</option>
     </select>
     <textarea id="note-content" placeholder="Add a note…" required></textarea>
@@ -414,7 +458,8 @@ a{color:inherit;}
 
   <form class="add-form" id="pack-form">
     <input id="pack-item" placeholder="Add an item…" required />
-    <input id="pack-category" placeholder="Category (e.g. Beach, Electronics)" />
+    <input id="pack-category" list="pack-category-list" placeholder="Category — pick an existing one or type a new one" />
+    <datalist id="pack-category-list"></datalist>
     <button class="btn block secondary" type="submit">Add to list</button>
   </form>
 </section>
@@ -469,12 +514,13 @@ a{color:inherit;}
    CONFIG — fill these in from your Supabase project
    Supabase dashboard → Settings → API
    ================================================================ */
-const CONFIG = {
+consconst CONFIG = {
   SUPABASE_URL: "https://cmxlawenlymilodsbzum.supabase.co",        // e.g. https://xxxxx.supabase.co
   SUPABASE_ANON_KEY: "sb_publishable_rSyOnNisWq-uygfgneNXEQ_jTNtpK4d",
   TRIP_NAME: "Goa Trip 2026",
   TRIP_DATE: "2026-09-15T00:00:00"          // edit to your actual travel date
 };
+
 const isConfigured = CONFIG.SUPABASE_URL.startsWith("http");
 if(!isConfigured){ document.getElementById('config-banner').style.display='block'; }
 const sb = isConfigured ? supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY) : null;
@@ -508,7 +554,7 @@ function tickCountdown(){
 tickCountdown(); setInterval(tickCountdown, 30000);
 
 /* ---------------- NOTES ---------------- */
-const noteCategories = ["All","Cafes to explore","Photo spots to click","Local dishes to try","Day trip ideas","Other"];
+const noteCategories = ["All","Cafes to explore","Photo spots to click","Local dishes to try","Day trip ideas","To shop","Other"];
 let activeCategory = "All";
 let allNotes = [];
 let lastNoteTap = {};
@@ -527,6 +573,8 @@ function renderChips(){
     });
   });
 }
+let editingNoteId = null;
+
 function renderNotes(){
   const list = document.getElementById('notes-list');
   const filtered = activeCategory==="All" ? allNotes : allNotes.filter(n=>n.category===activeCategory);
@@ -534,16 +582,39 @@ function renderNotes(){
     list.innerHTML = `<div class="empty-state"><span class="em">🗒️</span><span class="txt">nothing here yet — add the first one on the All tab</span></div>`;
     return;
   }
-  list.innerHTML = filtered.map(n=>`
+  list.innerHTML = filtered.map(n=>{
+    if(n.id === editingNoteId){
+      const catOptions = noteCategories.filter(c=>c!=='All').map(c=>
+        `<option ${c===n.category?'selected':''}>${c}</option>`
+      ).join('');
+      return `
+      <div class="note-card" data-id="${n.id}">
+        <div class="note-edit-form">
+          <select class="edit-cat">${catOptions}</select>
+          <textarea class="edit-content">${escapeHtml(n.content)}</textarea>
+          <div class="note-edit-actions">
+            <button type="button" class="btn edit-save" data-id="${n.id}">Save</button>
+            <button type="button" class="btn secondary edit-cancel">Cancel</button>
+          </div>
+        </div>
+      </div>`;
+    }
+    return `
     <div class="note-card ${n.is_done?'done':''}" data-id="${n.id}">
       <span class="done-badge">✅</span>
+      <div class="note-controls">
+        <button type="button" class="note-edit-btn" data-id="${n.id}" title="Edit">✎</button>
+        <button type="button" class="note-del-btn" data-id="${n.id}" title="Delete">🗑</button>
+      </div>
       <div class="cat">${n.category}</div>
       <div class="txt">${escapeHtml(n.content)}</div>
       <div class="meta">${n.author ? '— '+escapeHtml(n.author) : ''}</div>
-    </div>
-  `).join('');
-  list.querySelectorAll('.note-card').forEach(card=>{
-    card.addEventListener('click', ()=>{
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.note-card .txt, .note-card .cat').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const card = el.closest('.note-card');
       const id = card.dataset.id;
       const now = Date.now();
       if(lastNoteTap[id] && now - lastNoteTap[id] < 400){
@@ -552,6 +623,30 @@ function renderNotes(){
       } else {
         lastNoteTap[id] = now;
       }
+    });
+  });
+  list.querySelectorAll('.note-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ editingNoteId = btn.dataset.id; renderNotes(); });
+  });
+  list.querySelectorAll('.note-del-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!confirm('Delete this note?')) return;
+      await sb.from('notes').delete().eq('id', btn.dataset.id);
+      fetchNotes();
+    });
+  });
+  list.querySelectorAll('.edit-cancel').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ editingNoteId = null; renderNotes(); });
+  });
+  list.querySelectorAll('.edit-save').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const card = btn.closest('.note-card');
+      const category = card.querySelector('.edit-cat').value;
+      const content = card.querySelector('.edit-content').value.trim();
+      if(!content) return;
+      await sb.from('notes').update({category, content}).eq('id', btn.dataset.id);
+      editingNoteId = null;
+      fetchNotes();
     });
   });
 }
@@ -619,6 +714,9 @@ function renderPacking(){
   document.getElementById('progress-text').textContent = `${done} of ${total} packed`;
   document.getElementById('progress-pct').textContent = `${pct}%`;
   document.getElementById('progress-fill').style.width = pct+'%';
+
+  const cats = [...new Set(allItems.map(i=>i.category||'General'))].sort();
+  document.getElementById('pack-category-list').innerHTML = cats.map(c=>`<option value="${escapeHtml(c)}"></option>`).join('');
 }
 async function fetchChecklist(){
   if(!sb) return;
