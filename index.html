@@ -98,13 +98,13 @@ a{color:inherit;}
 }
 .hero-photo{
   display:block;
-  width:180px;
+  width:270px;
   aspect-ratio:3/4;
   object-fit:cover;
-  border:8px solid var(--paper);
-  border-bottom-width:26px;
+  border:9px solid var(--paper);
+  border-bottom-width:32px;
   border-radius:2px;
-  box-shadow:0 16px 30px rgba(0,0,0,0.35);
+  box-shadow:0 18px 34px rgba(0,0,0,0.4);
 }
 .hero-tape{
   position:absolute; top:-14px; left:50%; transform:translateX(-50%) rotate(-4deg);
@@ -406,9 +406,7 @@ a{color:inherit;}
 
 <!-- ============ HERO ============ -->
 <section class="hero">
-  <span class="hero-tag">a little scrapbook for —</span>
   <h1>Goa Trip<br><em>2026</em></h1>
-  <p class="sub">Every note, every packed bag, every photo we take — kept in one place, just for us.</p>
   <div class="hero-photo-wrap">
     <div class="hero-tape"></div>
     <img class="hero-photo" src="ChatGPT%20Image%20Sep%2012%2C%202026%2C%2003_22_50%20AM.png" alt="Us, getting ready for Goa" />
@@ -520,6 +518,7 @@ const CONFIG = {
   TRIP_NAME: "Goa Trip 2026",
   TRIP_DATE: "2026-09-15T00:00:00"          // edit to your actual travel date
 };
+
 const isConfigured = CONFIG.SUPABASE_URL.startsWith("http");
 if(!isConfigured){ document.getElementById('config-banner').style.display='block'; }
 const sb = isConfigured ? supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY) : null;
