@@ -514,13 +514,12 @@ a{color:inherit;}
    CONFIG — fill these in from your Supabase project
    Supabase dashboard → Settings → API
    ================================================================ */
-consconst CONFIG = {
+const CONFIG = {
   SUPABASE_URL: "https://cmxlawenlymilodsbzum.supabase.co",        // e.g. https://xxxxx.supabase.co
   SUPABASE_ANON_KEY: "sb_publishable_rSyOnNisWq-uygfgneNXEQ_jTNtpK4d",
   TRIP_NAME: "Goa Trip 2026",
   TRIP_DATE: "2026-09-15T00:00:00"          // edit to your actual travel date
 };
-
 const isConfigured = CONFIG.SUPABASE_URL.startsWith("http");
 if(!isConfigured){ document.getElementById('config-banner').style.display='block'; }
 const sb = isConfigured ? supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY) : null;
