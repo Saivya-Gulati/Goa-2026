@@ -231,6 +231,19 @@ a{color:inherit;}
 }
 .item-text{font-size:14.5px; flex:1;}
 .item-tag{font-size:11px; color:#8a8478;}
+.item-del{
+  background:none; border:none; color:#b6392c; font-size:18px; line-height:1;
+  padding:2px 6px; flex:0 0 auto; opacity:0.55;
+}
+.item-del:active{opacity:1;}
+
+.note-card{position:relative;}
+.note-card.done{opacity:0.55;}
+.note-card.done .txt{text-decoration:line-through;}
+.note-card .done-badge{
+  position:absolute; top:8px; right:10px; font-size:16px; display:none;
+}
+.note-card.done .done-badge{display:inline;}
 
 /* ============ PINBOARD ============ */
 .corkboard{
@@ -242,13 +255,16 @@ a{color:inherit;}
   padding:18px 12px 26px;
   margin:-6px -4px 0;
 }
-.pin-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px 10px;}
+.pin-grid{display:flex; flex-wrap:wrap; gap:18px 12px; justify-content:center;}
+.pin-unit{display:flex; align-items:flex-start; gap:0; width:100%; max-width:300px;}
 .polaroid{
   background:#fff;
   padding:8px 8px 34px;
   box-shadow:0 8px 16px rgba(0,0,0,0.25);
   position:relative;
   font-size:0;
+  flex:0 0 auto;
+  width:150px;
 }
 .polaroid img{width:100%; display:block; aspect-ratio:1/1; object-fit:cover; background:var(--sand);}
 .polaroid .cap{
@@ -264,6 +280,27 @@ a{color:inherit;}
 .polaroid .pin-emoji{
   position:absolute; top:-10px; left:50%; transform:translateX(-50%); font-size:22px;
   filter:drop-shadow(0 3px 3px rgba(0,0,0,0.3));
+}
+.pin-controls{
+  position:absolute; top:4px; right:4px; display:flex; gap:4px; z-index:2;
+}
+.pin-controls button{
+  width:24px; height:24px; border-radius:50%; border:none;
+  background:rgba(255,255,255,0.85); font-size:12px; box-shadow:0 2px 4px rgba(0,0,0,0.25);
+}
+.side-note{
+  flex:1; min-width:70px; max-width:120px;
+  background:repeating-linear-gradient(#FFFDF7 0px, #FFFDF7 22px, #E8DEC8 23px);
+  border:1px solid var(--line);
+  padding:10px 8px;
+  margin-top:14px;
+  transform:rotate(1.5deg);
+  box-shadow:0 4px 10px rgba(0,0,0,0.15);
+  font-family:'Caveat',cursive;
+  font-size:16px;
+  line-height:23px;
+  color:#3a2f22;
+  word-break:break-word;
 }
 .font-handwritten{font-family:'Caveat',cursive; font-size:19px;}
 .font-typewriter{font-family:'Special Elite',monospace; font-size:12px;}
@@ -352,7 +389,6 @@ a{color:inherit;}
   <form class="add-form" id="note-form">
     <select id="note-category">
       <option>Cafes to explore</option>
-      <option>Music to hear</option>
       <option>Photo spots to click</option>
       <option>Local dishes to try</option>
       <option>Day trip ideas</option>
@@ -397,11 +433,13 @@ a{color:inherit;}
 <!-- ============ PIN MODAL ============ -->
 <div class="pin-modal" id="pin-modal">
   <div class="pin-modal-body">
-    <h3>Pin a memory</h3>
+    <h3 id="pin-modal-title">Pin a memory</h3>
     <form id="pin-form">
-      <input type="file" id="pin-file" accept="image/*" required style="margin-bottom:10px;" />
+      <input type="file" id="pin-file" accept="image/*" style="margin-bottom:10px;" />
+      <div id="pin-file-hint" style="font-size:12px;color:#8a8478;margin:-6px 0 10px;">Add a photo</div>
       <textarea id="pin-caption" placeholder="Write the memory…" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;margin-bottom:10px;min-height:60px;"></textarea>
       <input id="pin-location" placeholder="Location (e.g. Anjuna Beach)" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;margin-bottom:10px;" />
+      <textarea id="pin-sidenote" placeholder="Side note (optional) — a little extra written beside the photo" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;margin-bottom:10px;min-height:50px;"></textarea>
 
       <div class="font-choice-row">
         <button type="button" class="font-choice font-handwritten active" data-font="handwritten">Handwritten</button>
@@ -437,7 +475,6 @@ const CONFIG = {
   TRIP_NAME: "Goa Trip 2026",
   TRIP_DATE: "2026-09-15T00:00:00"          // edit to your actual travel date
 };
-
 const isConfigured = CONFIG.SUPABASE_URL.startsWith("http");
 if(!isConfigured){ document.getElementById('config-banner').style.display='block'; }
 const sb = isConfigured ? supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY) : null;
@@ -471,9 +508,10 @@ function tickCountdown(){
 tickCountdown(); setInterval(tickCountdown, 30000);
 
 /* ---------------- NOTES ---------------- */
-const noteCategories = ["All","Cafes to explore","Music to hear","Photo spots to click","Local dishes to try","Day trip ideas","Other"];
+const noteCategories = ["All","Cafes to explore","Photo spots to click","Local dishes to try","Day trip ideas","Other"];
 let activeCategory = "All";
 let allNotes = [];
+let lastNoteTap = {};
 
 function renderChips(){
   const row = document.getElementById('note-chips');
@@ -481,23 +519,47 @@ function renderChips(){
     `<button class="chip ${c===activeCategory?'active':''}" data-cat="${c}">${c}</button>`
   ).join('');
   row.querySelectorAll('.chip').forEach(ch=>{
-    ch.addEventListener('click', ()=>{ activeCategory = ch.dataset.cat; renderChips(); renderNotes(); });
+    ch.addEventListener('click', ()=>{
+      activeCategory = ch.dataset.cat;
+      renderChips();
+      renderNotes();
+      document.getElementById('note-form').style.display = activeCategory==="All" ? 'block' : 'none';
+    });
   });
 }
 function renderNotes(){
   const list = document.getElementById('notes-list');
   const filtered = activeCategory==="All" ? allNotes : allNotes.filter(n=>n.category===activeCategory);
   if(filtered.length===0){
-    list.innerHTML = `<div class="empty-state"><span class="em">🗒️</span><span class="txt">nothing here yet — add the first one below</span></div>`;
+    list.innerHTML = `<div class="empty-state"><span class="em">🗒️</span><span class="txt">nothing here yet — add the first one on the All tab</span></div>`;
     return;
   }
   list.innerHTML = filtered.map(n=>`
-    <div class="note-card">
+    <div class="note-card ${n.is_done?'done':''}" data-id="${n.id}">
+      <span class="done-badge">✅</span>
       <div class="cat">${n.category}</div>
       <div class="txt">${escapeHtml(n.content)}</div>
       <div class="meta">${n.author ? '— '+escapeHtml(n.author) : ''}</div>
     </div>
   `).join('');
+  list.querySelectorAll('.note-card').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      const id = card.dataset.id;
+      const now = Date.now();
+      if(lastNoteTap[id] && now - lastNoteTap[id] < 400){
+        toggleNoteDone(id);
+        lastNoteTap[id] = 0;
+      } else {
+        lastNoteTap[id] = now;
+      }
+    });
+  });
+}
+async function toggleNoteDone(id){
+  const note = allNotes.find(n=>n.id===id);
+  if(!note) return;
+  await sb.from('notes').update({is_done: !note.is_done}).eq('id', id);
+  fetchNotes();
 }
 async function fetchNotes(){
   if(!sb) return;
@@ -529,16 +591,24 @@ function renderPacking(){
       <div class="pack-group">
         <h3>${escapeHtml(cat)}</h3>
         ${items.map(it=>`
-          <label class="pack-item ${it.is_checked?'checked':''}">
+          <div class="pack-item ${it.is_checked?'checked':''}">
             <input type="checkbox" data-id="${it.id}" ${it.is_checked?'checked':''}/>
             <span class="item-text">${escapeHtml(it.item)}</span>
-          </label>
+            <button type="button" class="item-del" data-id="${it.id}" title="Remove">✕</button>
+          </div>
         `).join('')}
       </div>
     `).join('');
     wrap.querySelectorAll('input[type=checkbox]').forEach(cb=>{
       cb.addEventListener('change', async ()=>{
         await sb.from('checklist_items').update({is_checked:cb.checked}).eq('id', cb.dataset.id);
+        fetchChecklist();
+      });
+    });
+    wrap.querySelectorAll('.item-del').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        if(!confirm('Remove this item from the list?')) return;
+        await sb.from('checklist_items').delete().eq('id', btn.dataset.id);
         fetchChecklist();
       });
     });
@@ -588,60 +658,128 @@ document.querySelectorAll('.sticker-choice').forEach(btn=>{
   });
 });
 
+let editingPinId = null;
+
 function renderPins(){
   const grid = document.getElementById('pin-grid');
   if(allPins.length===0){
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><span class="em">📌</span><span class="txt" style="color:#fff;">no memories pinned yet</span></div>`;
+    grid.innerHTML = `<div class="empty-state" style="width:100%;"><span class="em">📌</span><span class="txt" style="color:#fff;">no memories pinned yet</span></div>`;
     return;
   }
   grid.innerHTML = allPins.map(p=>`
-    <div class="polaroid" style="transform:rotate(${p.rotation||0}deg)">
-      <span class="pin-emoji">${p.sticker||''}</span>
-      <img src="${p.image_url}" alt="" loading="lazy"/>
-      <div class="cap font-${p.font_theme||'handwritten'}">${escapeHtml(p.caption||'')}</div>
-      ${p.location_name ? `<span class="loc">📍 ${escapeHtml(p.location_name)}</span>` : ''}
+    <div class="pin-unit">
+      <div class="polaroid" style="transform:rotate(${p.rotation||0}deg)">
+        <div class="pin-controls">
+          <button type="button" class="pin-edit-btn" data-id="${p.id}" title="Edit">✎</button>
+          <button type="button" class="pin-del-btn" data-id="${p.id}" title="Delete">🗑</button>
+        </div>
+        <span class="pin-emoji">${p.sticker||''}</span>
+        <img src="${p.image_url}" alt="" loading="lazy"/>
+        <div class="cap font-${p.font_theme||'handwritten'}">${escapeHtml(p.caption||'')}</div>
+        ${p.location_name ? `<span class="loc">📍 ${escapeHtml(p.location_name)}</span>` : ''}
+      </div>
+      ${p.side_note ? `<div class="side-note font-${p.font_theme||'handwritten'}">${escapeHtml(p.side_note)}</div>` : ''}
     </div>
   `).join('');
+
+  grid.querySelectorAll('.pin-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> openPinModalForEdit(btn.dataset.id));
+  });
+  grid.querySelectorAll('.pin-del-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> deletePin(btn.dataset.id));
+  });
 }
 async function fetchPins(){
   if(!sb) return;
   const { data, error } = await sb.from('pins').select('*').order('created_at', {ascending:false});
   if(!error){ allPins = data; renderPins(); }
 }
+async function deletePin(id){
+  if(!confirm('Remove this pin and its photo? This can\'t be undone.')) return;
+  const pin = allPins.find(p=>p.id===id);
+  if(pin && pin.storage_path){
+    await sb.storage.from('pins').remove([pin.storage_path]);
+  }
+  await sb.from('pins').delete().eq('id', id);
+  fetchPins();
+}
 
 const pinModal = document.getElementById('pin-modal');
+const pinFileInput = document.getElementById('pin-file');
+const pinFileHint = document.getElementById('pin-file-hint');
+
+function resetPinForm(){
+  document.getElementById('pin-form').reset();
+  chosenFont = 'handwritten'; chosenSticker = stickerOptions[0];
+  document.querySelectorAll('.font-choice').forEach(b=>b.classList.toggle('active', b.dataset.font==='handwritten'));
+  document.querySelectorAll('.sticker-choice').forEach((b,i)=>b.classList.toggle('active', i===0));
+}
+function openPinModalForAdd(){
+  editingPinId = null;
+  resetPinForm();
+  document.getElementById('pin-modal-title').textContent = 'Pin a memory';
+  pinFileInput.required = true;
+  pinFileHint.textContent = 'Add a photo';
+  document.getElementById('pin-submit-btn').textContent = 'Pin it';
+  pinModal.classList.add('open');
+}
+function openPinModalForEdit(id){
+  const p = allPins.find(x=>x.id===id);
+  if(!p) return;
+  editingPinId = id;
+  resetPinForm();
+  document.getElementById('pin-modal-title').textContent = 'Edit this pin';
+  pinFileInput.required = false;
+  pinFileHint.textContent = 'Leave blank to keep the current photo';
+  document.getElementById('pin-caption').value = p.caption || '';
+  document.getElementById('pin-location').value = p.location_name || '';
+  document.getElementById('pin-sidenote').value = p.side_note || '';
+  chosenFont = p.font_theme || 'handwritten';
+  chosenSticker = p.sticker || stickerOptions[0];
+  document.querySelectorAll('.font-choice').forEach(b=>b.classList.toggle('active', b.dataset.font===chosenFont));
+  document.querySelectorAll('.sticker-choice').forEach(b=>b.classList.toggle('active', b.dataset.s===chosenSticker));
+  document.getElementById('pin-submit-btn').textContent = 'Save changes';
+  pinModal.classList.add('open');
+}
 document.getElementById('open-pin-modal').addEventListener('click', ()=>{
   if(!sb) return alert('Connect Supabase first (see banner at top).');
-  pinModal.classList.add('open');
+  openPinModalForAdd();
 });
 document.getElementById('pin-cancel-btn').addEventListener('click', ()=> pinModal.classList.remove('open'));
 
 document.getElementById('pin-form').addEventListener('submit', async (e)=>{
   e.preventDefault();
-  const fileInput = document.getElementById('pin-file');
-  const file = fileInput.files[0];
-  if(!file) return;
+  const file = pinFileInput.files[0];
   const btn = document.getElementById('pin-submit-btn');
-  btn.disabled = true; btn.textContent = 'Pinning…';
+  btn.disabled = true; btn.textContent = editingPinId ? 'Saving…' : 'Pinning…';
   try{
-    const path = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g,'_')}`;
-    const { error: upErr } = await sb.storage.from('pins').upload(path, file);
-    if(upErr) throw upErr;
-    const { data: urlData } = sb.storage.from('pins').getPublicUrl(path);
-    const rotation = Math.floor(Math.random()*12)-6;
-    await sb.from('pins').insert({
-      image_url: urlData.publicUrl,
+    const payload = {
       caption: document.getElementById('pin-caption').value.trim(),
       location_name: document.getElementById('pin-location').value.trim(),
+      side_note: document.getElementById('pin-sidenote').value.trim(),
       font_theme: chosenFont,
-      sticker: chosenSticker,
-      rotation
-    });
+      sticker: chosenSticker
+    };
+    if(file){
+      const path = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g,'_')}`;
+      const { error: upErr } = await sb.storage.from('pins').upload(path, file);
+      if(upErr) throw upErr;
+      const { data: urlData } = sb.storage.from('pins').getPublicUrl(path);
+      payload.image_url = urlData.publicUrl;
+      payload.storage_path = path;
+    }
+    if(editingPinId){
+      await sb.from('pins').update(payload).eq('id', editingPinId);
+    } else {
+      payload.rotation = Math.floor(Math.random()*12)-6;
+      await sb.from('pins').insert(payload);
+    }
     e.target.reset();
+    editingPinId = null;
     pinModal.classList.remove('open');
     fetchPins();
   }catch(err){
-    alert('Upload failed: ' + (err.message || err));
+    alert('Something went wrong: ' + (err.message || err));
   }finally{
     btn.disabled = false; btn.textContent = 'Pin it';
   }
