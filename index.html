@@ -371,6 +371,50 @@ a{color:inherit;}
 .sticker-choice{font-size:22px; padding:6px 9px; border:1px solid var(--line); border-radius:8px; background:#fff;}
 .sticker-choice.active{border-color:var(--coral); background:#FCEAE5;}
 
+/* ============ SPLIT / EXPENSES ============ */
+.balance-banner{
+  background:linear-gradient(135deg, var(--teal-mid), var(--teal-deep));
+  color:#fff;
+  border-radius:14px;
+  padding:20px 18px;
+  margin-bottom:20px;
+  text-align:center;
+}
+.balance-banner .bal-line{
+  font-family:'Fraunces',serif; font-size:19px; line-height:1.4;
+}
+.balance-banner .bal-sub{font-size:12px; color:var(--seafoam); margin-top:4px;}
+.balance-banner.settled{background:linear-gradient(135deg,#4a8a72,#2f6350);}
+
+.payer-toggle{display:flex; gap:8px; margin-bottom:10px;}
+.payer-btn{
+  flex:1; padding:10px; border-radius:8px; border:1px solid var(--line);
+  background:#fff; font-size:14px; font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px;
+}
+.payer-btn.active{border-color:var(--coral); background:#FCEAE5; color:var(--coral);}
+.avatar-dot{width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:700;}
+.avatar-boondi{background:var(--gold);}
+.avatar-laddoo{background:var(--coral);}
+
+.split-choice-row{display:flex; flex-direction:column; gap:8px; margin-bottom:12px;}
+.split-choice{
+  display:flex; align-items:center; gap:10px;
+  border:1px solid var(--line); border-radius:8px; padding:10px 12px; background:#fff; font-size:13.5px; text-align:left;
+}
+.split-choice.active{border-color:var(--coral); background:#FCEAE5;}
+
+.expense-card{
+  background:var(--paper); border:1px solid var(--line); border-radius:10px;
+  padding:12px 14px; margin-bottom:9px; display:flex; align-items:center; gap:12px;
+  box-shadow:var(--shadow);
+}
+.expense-card .avatar-dot{width:34px;height:34px;font-size:13px;flex:0 0 auto;}
+.expense-main{flex:1; min-width:0;}
+.expense-desc{font-size:14.5px; font-weight:600;}
+.expense-meta{font-size:12px; color:#8a8478; margin-top:2px;}
+.expense-amt{font-family:'Fraunces',serif; font-size:17px; white-space:nowrap;}
+.expense-del{background:none; border:none; color:#c9938a; font-size:15px; padding:2px 4px;}
+
 /* ============ TAB BAR ============ */
 .tabbar{
   position:fixed; bottom:0; left:0; width:100%;
@@ -473,6 +517,30 @@ a{color:inherit;}
   <button class="upload-fab" id="open-pin-modal">+</button>
 </section>
 
+<!-- ============ SPLIT VIEW ============ -->
+<section class="view" id="view-split">
+  <h2 class="section-title">Split</h2>
+  <span class="section-hint">who paid, who owes — kept fair, kept simple</span>
+
+  <div class="balance-banner" id="balance-banner"></div>
+
+  <div id="expense-list"></div>
+
+  <form class="add-form" id="expense-form">
+    <input id="expense-desc" placeholder="What was it for? (e.g. Dinner at the shack)" required />
+    <input id="expense-amount" type="number" step="0.01" min="0" inputmode="decimal" placeholder="Amount (₹)" required />
+
+    <div class="payer-toggle">
+      <button type="button" class="payer-btn active" data-payer="Boondi"><span class="avatar-dot avatar-boondi">B</span> Boondi paid</button>
+      <button type="button" class="payer-btn" data-payer="Laddoo"><span class="avatar-dot avatar-laddoo">L</span> Laddoo paid</button>
+    </div>
+
+    <div class="split-choice-row" id="split-choice-row"></div>
+
+    <button class="btn block" type="submit">Add expense</button>
+  </form>
+</section>
+
 <!-- ============ PIN MODAL ============ -->
 <div class="pin-modal" id="pin-modal">
   <div class="pin-modal-body">
@@ -505,6 +573,7 @@ a{color:inherit;}
   <button class="tab-btn" data-tab="notes"><span class="ic">📝</span>Notes</button>
   <button class="tab-btn" data-tab="packing"><span class="ic">🎒</span>Packing</button>
   <button class="tab-btn" data-tab="pinboard"><span class="ic">📌</span>Pinboard</button>
+  <button class="tab-btn" data-tab="split"><span class="ic">💰</span>Split</button>
 </nav>
 
 <script>
@@ -526,7 +595,8 @@ const sb = isConfigured ? supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPA
 /* ---------------- TAB NAVIGATION ---------------- */
 const tabs = document.querySelectorAll('.tab-btn');
 const views = { home: document.querySelector('.hero'), notes: document.getElementById('view-notes'),
-  packing: document.getElementById('view-packing'), pinboard: document.getElementById('view-pinboard') };
+  packing: document.getElementById('view-packing'), pinboard: document.getElementById('view-pinboard'),
+  split: document.getElementById('view-split') };
 function showTab(name){
   tabs.forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
   Object.entries(views).forEach(([k,el])=>{
@@ -881,12 +951,116 @@ document.getElementById('pin-form').addEventListener('submit', async (e)=>{
   }
 });
 
+/* ---------------- SPLIT / EXPENSES ---------------- */
+const PEOPLE = ["Boondi", "Laddoo"];
+let allExpenses = [];
+let selectedPayer = "Boondi";
+let selectedSplit = "equal";
+
+function renderSplitChoices(){
+  const other = selectedPayer === "Boondi" ? "Laddoo" : "Boondi";
+  const row = document.getElementById('split-choice-row');
+  row.innerHTML = `
+    <button type="button" class="split-choice ${selectedSplit==='equal'?'active':''}" data-split="equal">
+      ⚖️ Split equally — ${selectedPayer} paid, both owe half
+    </button>
+    <button type="button" class="split-choice ${selectedSplit==='full'?'active':''}" data-split="full">
+      💸 ${selectedPayer} is owed the full amount — ${other} owes it all
+    </button>
+  `;
+  row.querySelectorAll('.split-choice').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ selectedSplit = btn.dataset.split; renderSplitChoices(); });
+  });
+}
+document.querySelectorAll('.payer-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.payer-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedPayer = btn.dataset.payer;
+    renderSplitChoices();
+  });
+});
+renderSplitChoices();
+
+function computeBalance(){
+  // positive => Laddoo owes Boondi; negative => Boondi owes Laddoo
+  let net = 0;
+  allExpenses.forEach(e=>{
+    const amt = parseFloat(e.amount) || 0;
+    const owedToPayer = e.split_type === 'full' ? amt : amt / 2;
+    if(e.paid_by === 'Boondi') net += owedToPayer;
+    else net -= owedToPayer;
+  });
+  return net;
+}
+function renderBalanceBanner(){
+  const banner = document.getElementById('balance-banner');
+  const net = computeBalance();
+  const total = allExpenses.reduce((s,e)=> s + (parseFloat(e.amount)||0), 0);
+  if(Math.abs(net) < 0.005){
+    banner.className = 'balance-banner settled';
+    banner.innerHTML = `<div class="bal-line">All settled up 🎉</div><div class="bal-sub">Trip spend so far: ₹${total.toFixed(0)}</div>`;
+  } else {
+    const owes = net > 0 ? 'Laddoo' : 'Boondi';
+    const owed = net > 0 ? 'Boondi' : 'Laddoo';
+    banner.className = 'balance-banner';
+    banner.innerHTML = `<div class="bal-line">${owes} owes ${owed} ₹${Math.abs(net).toFixed(0)}</div><div class="bal-sub">Trip spend so far: ₹${total.toFixed(0)}</div>`;
+  }
+}
+function renderExpenses(){
+  const list = document.getElementById('expense-list');
+  if(allExpenses.length===0){
+    list.innerHTML = `<div class="empty-state"><span class="em">💸</span><span class="txt">no expenses yet — add the first one below</span></div>`;
+  } else {
+    list.innerHTML = allExpenses.map(e=>{
+      const initial = e.paid_by === 'Boondi' ? 'B' : 'L';
+      const avCls = e.paid_by === 'Boondi' ? 'avatar-boondi' : 'avatar-laddoo';
+      const splitLabel = e.split_type === 'full' ? `${e.paid_by} is owed the full amount` : `split equally`;
+      return `
+      <div class="expense-card" data-id="${e.id}">
+        <span class="avatar-dot ${avCls}">${initial}</span>
+        <div class="expense-main">
+          <div class="expense-desc">${escapeHtml(e.description)}</div>
+          <div class="expense-meta">${e.paid_by} paid · ${splitLabel}</div>
+        </div>
+        <div class="expense-amt">₹${parseFloat(e.amount).toFixed(0)}</div>
+        <button type="button" class="expense-del" data-id="${e.id}">🗑</button>
+      </div>`;
+    }).join('');
+    list.querySelectorAll('.expense-del').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        if(!confirm('Delete this expense?')) return;
+        await sb.from('expenses').delete().eq('id', btn.dataset.id);
+        fetchExpenses();
+      });
+    });
+  }
+  renderBalanceBanner();
+}
+async function fetchExpenses(){
+  if(!sb) return;
+  const { data, error } = await sb.from('expenses').select('*').order('created_at', {ascending:false});
+  if(!error){ allExpenses = data; renderExpenses(); }
+}
+document.getElementById('expense-form').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  if(!sb) return alert('Connect Supabase first (see banner at top).');
+  const description = document.getElementById('expense-desc').value.trim();
+  const amount = parseFloat(document.getElementById('expense-amount').value);
+  if(!description || !amount || amount <= 0) return;
+  await sb.from('expenses').insert({ description, amount, paid_by: selectedPayer, split_type: selectedSplit });
+  e.target.reset();
+  selectedSplit = 'equal'; renderSplitChoices();
+  fetchExpenses();
+});
+
 /* ---------------- REALTIME (so you both see updates live) ---------------- */
 function setupRealtime(){
   if(!sb) return;
   sb.channel('notes-changes').on('postgres_changes', {event:'*', schema:'public', table:'notes'}, fetchNotes).subscribe();
   sb.channel('checklist-changes').on('postgres_changes', {event:'*', schema:'public', table:'checklist_items'}, fetchChecklist).subscribe();
   sb.channel('pins-changes').on('postgres_changes', {event:'*', schema:'public', table:'pins'}, fetchPins).subscribe();
+  sb.channel('expenses-changes').on('postgres_changes', {event:'*', schema:'public', table:'expenses'}, fetchExpenses).subscribe();
 }
 
 /* ---------------- UTIL ---------------- */
@@ -900,6 +1074,7 @@ renderChips();
 fetchNotes();
 fetchChecklist();
 fetchPins();
+fetchExpenses();
 setupRealtime();
 </script>
 </body>
