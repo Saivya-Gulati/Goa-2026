@@ -455,55 +455,7 @@ a{color:inherit;}
     <div class="hero-tape"></div>
     <img class="hero-photo" src="ChatGPT%20Image%20Sep%2012%2C%202026%2C%2003_22_50%20AM.png" alt="Us, getting ready for Goa" />
   </div>
-  <div class="countdown" id="countdown">
-    <div class="cell"><span class="num" id="cd-days">–</span><span class="lbl">days</span></div>
-    <div class="cell"><span class="num" id="cd-hours">–</span><span class="lbl">hours</span></div>
-    <div class="cell"><span class="num" id="cd-mins">–</span><span class="lbl">mins</span></div>
-  </div>
   <svg class="wave" viewBox="0 0 500 60" preserveAspectRatio="none"><path d="M0,30 C150,70 350,-10 500,30 L500,60 L0,60 Z"></path></svg>
-</section>
-
-<!-- ============ NOTES VIEW ============ -->
-<section class="view" id="view-notes">
-  <h2 class="section-title">Notes</h2>
-  <span class="section-hint">cafes, songs, sights — things worth remembering before we go</span>
-
-  <div class="chip-row" id="note-chips"></div>
-  <div id="notes-list"></div>
-
-  <form class="add-form" id="note-form">
-    <select id="note-category">
-      <option>Cafes to explore</option>
-      <option>Photo spots to click</option>
-      <option>Local dishes to try</option>
-      <option>Day trip ideas</option>
-      <option>To shop</option>
-      <option>Other</option>
-    </select>
-    <textarea id="note-content" placeholder="Add a note…" required></textarea>
-    <input id="note-author" placeholder="Your name (optional)" />
-    <button class="btn block" type="submit">Add note</button>
-  </form>
-</section>
-
-<!-- ============ PACKING VIEW ============ -->
-<section class="view" id="view-packing">
-  <h2 class="section-title">Packing checklist</h2>
-  <span class="section-hint">tick it off once it's actually in the bag</span>
-
-  <div class="progress-wrap">
-    <div class="progress-label"><span id="progress-text">0 of 0 packed</span><span id="progress-pct">0%</span></div>
-    <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
-  </div>
-
-  <div id="packing-groups"></div>
-
-  <form class="add-form" id="pack-form">
-    <input id="pack-item" placeholder="Add an item…" required />
-    <input id="pack-category" list="pack-category-list" placeholder="Category — pick an existing one or type a new one" />
-    <datalist id="pack-category-list"></datalist>
-    <button class="btn block secondary" type="submit">Add to list</button>
-  </form>
 </section>
 
 <!-- ============ PINBOARD VIEW ============ -->
@@ -570,8 +522,6 @@ a{color:inherit;}
 <!-- ============ TAB BAR ============ -->
 <nav class="tabbar">
   <button class="tab-btn active" data-tab="home"><span class="ic">🏖️</span>Home</button>
-  <button class="tab-btn" data-tab="notes"><span class="ic">📝</span>Notes</button>
-  <button class="tab-btn" data-tab="packing"><span class="ic">🎒</span>Packing</button>
   <button class="tab-btn" data-tab="pinboard"><span class="ic">📌</span>Pinboard</button>
   <button class="tab-btn" data-tab="split"><span class="ic">💰</span>Split</button>
 </nav>
@@ -594,8 +544,7 @@ const sb = isConfigured ? supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPA
 
 /* ---------------- TAB NAVIGATION ---------------- */
 const tabs = document.querySelectorAll('.tab-btn');
-const views = { home: document.querySelector('.hero'), notes: document.getElementById('view-notes'),
-  packing: document.getElementById('view-packing'), pinboard: document.getElementById('view-pinboard'),
+const views = { home: document.querySelector('.hero'), pinboard: document.getElementById('view-pinboard'),
   split: document.getElementById('view-split') };
 function showTab(name){
   tabs.forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
@@ -606,201 +555,6 @@ function showTab(name){
   window.scrollTo({top:0,behavior:'instant'});
 }
 tabs.forEach(t=>t.addEventListener('click', ()=>showTab(t.dataset.tab)));
-
-/* ---------------- COUNTDOWN ---------------- */
-function tickCountdown(){
-  const target = new Date(CONFIG.TRIP_DATE).getTime();
-  const now = Date.now();
-  const diff = Math.max(0, target - now);
-  const days = Math.floor(diff/86400000);
-  const hours = Math.floor((diff%86400000)/3600000);
-  const mins = Math.floor((diff%3600000)/60000);
-  document.getElementById('cd-days').textContent = days;
-  document.getElementById('cd-hours').textContent = hours;
-  document.getElementById('cd-mins').textContent = mins;
-}
-tickCountdown(); setInterval(tickCountdown, 30000);
-
-/* ---------------- NOTES ---------------- */
-const noteCategories = ["All","Cafes to explore","Photo spots to click","Local dishes to try","Day trip ideas","To shop","Other"];
-let activeCategory = "All";
-let allNotes = [];
-let lastNoteTap = {};
-
-function renderChips(){
-  const row = document.getElementById('note-chips');
-  row.innerHTML = noteCategories.map(c=>
-    `<button class="chip ${c===activeCategory?'active':''}" data-cat="${c}">${c}</button>`
-  ).join('');
-  row.querySelectorAll('.chip').forEach(ch=>{
-    ch.addEventListener('click', ()=>{
-      activeCategory = ch.dataset.cat;
-      renderChips();
-      renderNotes();
-      document.getElementById('note-form').style.display = activeCategory==="All" ? 'block' : 'none';
-    });
-  });
-}
-let editingNoteId = null;
-
-function renderNotes(){
-  const list = document.getElementById('notes-list');
-  const filtered = activeCategory==="All" ? allNotes : allNotes.filter(n=>n.category===activeCategory);
-  if(filtered.length===0){
-    list.innerHTML = `<div class="empty-state"><span class="em">🗒️</span><span class="txt">nothing here yet — add the first one on the All tab</span></div>`;
-    return;
-  }
-  list.innerHTML = filtered.map(n=>{
-    if(n.id === editingNoteId){
-      const catOptions = noteCategories.filter(c=>c!=='All').map(c=>
-        `<option ${c===n.category?'selected':''}>${c}</option>`
-      ).join('');
-      return `
-      <div class="note-card" data-id="${n.id}">
-        <div class="note-edit-form">
-          <select class="edit-cat">${catOptions}</select>
-          <textarea class="edit-content">${escapeHtml(n.content)}</textarea>
-          <div class="note-edit-actions">
-            <button type="button" class="btn edit-save" data-id="${n.id}">Save</button>
-            <button type="button" class="btn secondary edit-cancel">Cancel</button>
-          </div>
-        </div>
-      </div>`;
-    }
-    return `
-    <div class="note-card ${n.is_done?'done':''}" data-id="${n.id}">
-      <span class="done-badge">✅</span>
-      <div class="note-controls">
-        <button type="button" class="note-edit-btn" data-id="${n.id}" title="Edit">✎</button>
-        <button type="button" class="note-del-btn" data-id="${n.id}" title="Delete">🗑</button>
-      </div>
-      <div class="cat">${n.category}</div>
-      <div class="txt">${escapeHtml(n.content)}</div>
-      <div class="meta">${n.author ? '— '+escapeHtml(n.author) : ''}</div>
-    </div>`;
-  }).join('');
-
-  list.querySelectorAll('.note-card .txt, .note-card .cat').forEach(el=>{
-    el.addEventListener('click', ()=>{
-      const card = el.closest('.note-card');
-      const id = card.dataset.id;
-      const now = Date.now();
-      if(lastNoteTap[id] && now - lastNoteTap[id] < 400){
-        toggleNoteDone(id);
-        lastNoteTap[id] = 0;
-      } else {
-        lastNoteTap[id] = now;
-      }
-    });
-  });
-  list.querySelectorAll('.note-edit-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ editingNoteId = btn.dataset.id; renderNotes(); });
-  });
-  list.querySelectorAll('.note-del-btn').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
-      if(!confirm('Delete this note?')) return;
-      await sb.from('notes').delete().eq('id', btn.dataset.id);
-      fetchNotes();
-    });
-  });
-  list.querySelectorAll('.edit-cancel').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ editingNoteId = null; renderNotes(); });
-  });
-  list.querySelectorAll('.edit-save').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
-      const card = btn.closest('.note-card');
-      const category = card.querySelector('.edit-cat').value;
-      const content = card.querySelector('.edit-content').value.trim();
-      if(!content) return;
-      await sb.from('notes').update({category, content}).eq('id', btn.dataset.id);
-      editingNoteId = null;
-      fetchNotes();
-    });
-  });
-}
-async function toggleNoteDone(id){
-  const note = allNotes.find(n=>n.id===id);
-  if(!note) return;
-  await sb.from('notes').update({is_done: !note.is_done}).eq('id', id);
-  fetchNotes();
-}
-async function fetchNotes(){
-  if(!sb) return;
-  const { data, error } = await sb.from('notes').select('*').order('created_at', {ascending:false});
-  if(!error){ allNotes = data; renderNotes(); }
-}
-document.getElementById('note-form').addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  if(!sb) return alert('Connect Supabase first (see banner at top).');
-  const category = document.getElementById('note-category').value;
-  const content = document.getElementById('note-content').value.trim();
-  const author = document.getElementById('note-author').value.trim();
-  if(!content) return;
-  await sb.from('notes').insert({category, content, author});
-  document.getElementById('note-content').value='';
-  fetchNotes();
-});
-
-/* ---------------- PACKING CHECKLIST ---------------- */
-let allItems = [];
-function renderPacking(){
-  const wrap = document.getElementById('packing-groups');
-  const groups = {};
-  allItems.forEach(it=>{ (groups[it.category||'General'] ??= []).push(it); });
-  if(allItems.length===0){
-    wrap.innerHTML = `<div class="empty-state"><span class="em">🎒</span><span class="txt">list's empty — add your first item below</span></div>`;
-  } else {
-    wrap.innerHTML = Object.entries(groups).map(([cat, items])=>`
-      <div class="pack-group">
-        <h3>${escapeHtml(cat)}</h3>
-        ${items.map(it=>`
-          <div class="pack-item ${it.is_checked?'checked':''}">
-            <input type="checkbox" data-id="${it.id}" ${it.is_checked?'checked':''}/>
-            <span class="item-text">${escapeHtml(it.item)}</span>
-            <button type="button" class="item-del" data-id="${it.id}" title="Remove">✕</button>
-          </div>
-        `).join('')}
-      </div>
-    `).join('');
-    wrap.querySelectorAll('input[type=checkbox]').forEach(cb=>{
-      cb.addEventListener('change', async ()=>{
-        await sb.from('checklist_items').update({is_checked:cb.checked}).eq('id', cb.dataset.id);
-        fetchChecklist();
-      });
-    });
-    wrap.querySelectorAll('.item-del').forEach(btn=>{
-      btn.addEventListener('click', async ()=>{
-        if(!confirm('Remove this item from the list?')) return;
-        await sb.from('checklist_items').delete().eq('id', btn.dataset.id);
-        fetchChecklist();
-      });
-    });
-  }
-  const total = allItems.length;
-  const done = allItems.filter(i=>i.is_checked).length;
-  const pct = total ? Math.round(done/total*100) : 0;
-  document.getElementById('progress-text').textContent = `${done} of ${total} packed`;
-  document.getElementById('progress-pct').textContent = `${pct}%`;
-  document.getElementById('progress-fill').style.width = pct+'%';
-
-  const cats = [...new Set(allItems.map(i=>i.category||'General'))].sort();
-  document.getElementById('pack-category-list').innerHTML = cats.map(c=>`<option value="${escapeHtml(c)}"></option>`).join('');
-}
-async function fetchChecklist(){
-  if(!sb) return;
-  const { data, error } = await sb.from('checklist_items').select('*').order('category').order('created_at');
-  if(!error){ allItems = data; renderPacking(); }
-}
-document.getElementById('pack-form').addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  if(!sb) return alert('Connect Supabase first (see banner at top).');
-  const item = document.getElementById('pack-item').value.trim();
-  const category = document.getElementById('pack-category').value.trim() || 'General';
-  if(!item) return;
-  await sb.from('checklist_items').insert({item, category});
-  document.getElementById('pack-item').value=''; document.getElementById('pack-category').value='';
-  fetchChecklist();
-});
 
 /* ---------------- PINBOARD ---------------- */
 const stickerOptions = ["☀️","🌴","🐚","📸","🍹","✈️","🎵","📍","❤️","🌊"];
@@ -1057,8 +811,6 @@ document.getElementById('expense-form').addEventListener('submit', async (e)=>{
 /* ---------------- REALTIME (so you both see updates live) ---------------- */
 function setupRealtime(){
   if(!sb) return;
-  sb.channel('notes-changes').on('postgres_changes', {event:'*', schema:'public', table:'notes'}, fetchNotes).subscribe();
-  sb.channel('checklist-changes').on('postgres_changes', {event:'*', schema:'public', table:'checklist_items'}, fetchChecklist).subscribe();
   sb.channel('pins-changes').on('postgres_changes', {event:'*', schema:'public', table:'pins'}, fetchPins).subscribe();
   sb.channel('expenses-changes').on('postgres_changes', {event:'*', schema:'public', table:'expenses'}, fetchExpenses).subscribe();
 }
@@ -1070,9 +822,6 @@ function escapeHtml(str=''){
 
 /* ---------------- INIT ---------------- */
 showTab('home');
-renderChips();
-fetchNotes();
-fetchChecklist();
 fetchPins();
 fetchExpenses();
 setupRealtime();
